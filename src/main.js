@@ -1,0 +1,47 @@
+import Vue from 'vue'
+import App from './App.vue'
+import Router from './routes.js'
+import VueResource from 'vue-resource'
+import Auth from './packages/Auth.js'
+
+Vue.use(VueResource)
+Vue.use(Auth)
+
+Vue.http.options.root = 'http://myblog.test/'
+Vue.http.headers.common['Authorization'] = 'Bearer ' + Vue.auth.getToken()
+
+//Global errors
+Vue.http.interceptors.push((request,next) => {
+	next(response => {
+		if (response.status == 404)
+			swal(response.status.toString(),response.body.message,"error")
+		else if(response.status == 500)
+			swal(response.status.toString(),"We have a server problem","error")
+	})
+})
+
+Router.beforeEach(
+	(to,from,next) => {
+		if (to.matched.some(record => record.meta.forVisitors)) {
+			if (Vue.auth.isAuthenticated()) {
+				next({
+					path: '/admin/dashboard'
+				})
+			}else next()
+		}
+		else if (to.matched.some(record => record.meta.forAuth)) {
+			if (! Vue.auth.isAuthenticated()) {
+				next({
+					path: '/login'
+				})
+			}else next()
+		}
+		else next()
+	}
+)
+
+new Vue({
+  el: '#app',
+  render: h => h(App),
+  router: Router
+})
